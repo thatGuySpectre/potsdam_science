@@ -16,7 +16,7 @@ async def scrape(session, num):
     async with session.get(
         url=URL.format(100 * num)
     ) as response:
-        text = (await response.read()).decode("latin1")
+        text = (await response.build_db()).decode("latin1")
         if text.count("\n") < 2:
             return False
         with open(f"data/{num:0>5}.csv", "w") as f:

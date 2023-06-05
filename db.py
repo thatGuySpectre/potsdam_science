@@ -2,6 +2,8 @@ import os
 import sqlite3
 import logging
 
+from typing import Union
+
 from itertools import combinations
 
 logger = logging.getLogger()
@@ -12,7 +14,7 @@ connection = sqlite3.connect("database.sqlite")
 cursor = connection.cursor()
 
 
-def read():
+def build_db():
     headers = {
         'DokumentID': "STRING PRIMARY KEY",
         'Dokumenttyp': "STRING",
@@ -64,6 +66,10 @@ def read():
     logger.warning(f"Wrote {count} rows, discarded {err_count}")
 
 
+def query(sql):
+    return cursor.execute(sql).fetchall()
+
+
 def interactive():
     while True:
         prompt = input()
@@ -71,17 +77,77 @@ def interactive():
         print(out)
 
 
-def edges_from_db(where: str):
+def edges_full(where: str):
     sql = f"SELECT Autoren FROM papers WHERE {where};"
     response = cursor.execute(sql).fetchall()
     authors = map(
         lambda x: x[0].split(";"),
         response
     )
-    return edges(authors)
+    return _edges(authors)
 
 
-def edges(papers: list[list[str]]):
+AND = "AND"
+OR = "OR"
+
+
+def edges_simple(mode: Union[AND, OR] = AND,
+                 strict: bool = False,
+                 *,
+                 DokumentID: str = None,
+                 Dokumenttyp: str = None,
+                 Autoren: str = None,
+                 Herausgeber: str = None,
+                 Haupttitel: str = None,
+                 Abstract: str = None,
+                 Auflage: str = None,
+                 Verlagsort: str = None,
+                 Verlag: str = None,
+                 Erscheinungsjahr: int | list[int] = None,
+                 Seitenzahl: int | list[int] = None,
+                 Titel: str = None,
+                 Bandzahl: int | list[int] = None,
+                 ISBN: str = None,
+                 Hochschulschrift: str = None,
+                 Konferenzname: str = None,
+                 QuelleTitel: str = None,
+                 QuelleJahrgang: int | list[int] = None,
+                 QuelleHeftnummer: int | list[int] = None,
+                 QuelleErsteSeite: int | list[int] = None,
+                 QuelleLetzteSeite: int | list[int] = None,
+                 URN: str = None,
+                 DOI: str = None,
+                 Abteilungen: str = None,
+                 ):
+    args = locals().copy()
+    args.pop("mode")
+
+    int_args = {k : v for (k, v) in args.items() if type(v) == int}
+    str_args = {k : v for (k, v) in args.items() if type(v) == str}
+    lst_args = {k : v for (k, v) in args.items() if type(v) in (tuple, list, set)}
+
+    conditions = []
+
+    if mode not in {"OR", "AND"}:
+        raise ValueError
+
+    for key, val in str_args.items():
+        if strict:
+            conditions += [f" {key}={val} "]
+        else:
+            conditions += [f" {key} LIKE '%{val}%' "]
+    for key, val in int_args.items():
+        conditions += [f" {key}={val} "]
+    for key, val in lst_args.items():
+        conditions += [f" {key} IN ({','.join(map(str, val))}) "]
+
+    if len(conditions) == 0:
+        conditions.append("1=1")
+
+    return edges_full(mode.join(conditions))
+
+
+def _edges(papers: list[list[str]]):
     edg = set()
     for authors in papers:
         for x, y in combinations(authors, 2):
@@ -90,5 +156,5 @@ def edges(papers: list[list[str]]):
 
 
 if __name__ == "__main__":
-    print(edges_from_db("Autoren LIKE '%Bargheer%' AND Erscheinungsjahr=2021"))
+    print(edges_full("Autoren LIKE '%Bargheer%' AND Erscheinungsjahr=2021"))
 

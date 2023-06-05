@@ -1,11 +1,11 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from db import edges_from_db
+from db import edges_full
 
 while True:
     G = nx.from_edgelist(
-        edges_from_db(input())
+        edges_full(input())
     )
 
     pos = nx.kamada_kawai_layout(G)
