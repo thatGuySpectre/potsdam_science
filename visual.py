@@ -13,7 +13,7 @@ with open("connections.csv") as f:
 G = nx.from_edgelist(edges)
 
 Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
-G0 = G.subgraph(Gcc[5]).copy()
+G0 = G.subgraph(Gcc[0]).copy()
 
 remove = [node for node, degree in G0.degree() if degree < 2]
 G0.remove_nodes_from(remove)
